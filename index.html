@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f7f8fa">
+    <title>Voice2Text — Speak your mind</title>
+    <link rel="stylesheet" href="/styles.css">
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <a class="brand" href="/" aria-label="Voice2Text home"><span class="brand-icon" aria-hidden="true">≋</span> voice<span>2</span>text</a>
+        <button id="settings-toggle" class="secondary" aria-expanded="false" aria-controls="settings">API key <span id="key-indicator" aria-hidden="true">○</span></button>
+      </header>
+
+      <section id="settings" class="card settings" hidden aria-labelledby="settings-title">
+        <h2 id="settings-title">Your OpenAI API key</h2>
+        <p>Saved only in this browser, on this device. Your key and audio are sent directly to OpenAI for transcription.</p>
+        <form id="key-form">
+          <label for="api-key">API key</label>
+          <div class="key-row"><input id="api-key" type="password" placeholder="sk-…" autocomplete="off" spellcheck="false" required><button class="primary" type="submit">Save key</button><button id="remove-key" class="secondary" type="button">Remove</button></div>
+        </form>
+        <p class="small">Local storage is not encrypted. Use this on a trusted device. <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer">Get an API key ↗</a></p>
+        <p id="key-status" class="small" role="status"></p>
+      </section>
+
+      <section class="intro">
+        <p class="eyebrow">LESS TYPING. MORE THINKING.</p>
+        <h1>Speak your mind.<br><span>We’ll take notes.</span></h1>
+        <p>Turn your voice into text you can edit, copy, and make your own.</p>
+      </section>
+
+      <section class="card recorder" aria-label="Voice recording">
+        <div class="recorder-top"><span class="tag">GPT Transcribe</span><span id="timer">00:00</span></div>
+        <div id="wave" class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <h2 id="record-title">A thought starts here</h2>
+        <p id="record-hint">Tap record, speak naturally, then stop to transcribe.</p>
+        <button id="record" class="primary record-button"><span id="record-symbol" aria-hidden="true">●</span> <span id="record-label">Start recording</span></button>
+        <button id="retry" class="secondary" hidden>Retry transcription</button>
+        <p class="small">Audio goes to OpenAI only after you stop. Up to 5 minutes per recording.</p>
+      </section>
+
+      <p id="status" class="status" role="status" aria-live="polite">Add your API key to get started.</p>
+
+      <section class="card transcript-card" aria-labelledby="transcript-title">
+        <div class="transcript-top"><h2 id="transcript-title">Your transcript</h2><div class="actions"><button id="clear" class="quiet" disabled>Clear</button><button id="copy" class="secondary" disabled>Copy text</button></div></div>
+        <label class="sr-only" for="transcript">Editable transcript</label>
+        <textarea id="transcript" placeholder="Your words will appear here…" spellcheck="true"></textarea>
+        <div class="transcript-bottom"><span id="word-count">0 words</span><span>Edit freely. New recordings append below.</span></div>
+      </section>
+      <footer>Just your voice, a little AI, and a blank page.<br><span>Recordings and transcripts stay in memory until you close or reload this page.</span></footer>
+    </main>
+  </body>
+</html>
