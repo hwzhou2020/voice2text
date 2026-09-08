@@ -1,7 +1,8 @@
 const $ = (id) => document.getElementById(id);
 const STORAGE_KEY = 'voice2text.openai-api-key';
 const MAX_BYTES = 24 * 1024 * 1024;
-let apiKey = '';
+let apiKey = false;
+let keyBusy = false;
 let phase = 'idle';
 let recorder;
 let stream;
@@ -31,7 +32,7 @@ function setPhase(next) {
   $('record-title').textContent = recording ? 'Listening to you' : next === 'transcribing' ? 'Finding your words' : 'A thought starts here';
   $('record-hint').textContent = recording ? 'Take your time. Stop when you’re ready.' : 'Tap record, speak naturally, then stop to transcribe.';
   $('retry').hidden = !audio || busy;
-  $('key-form').querySelectorAll('input, button').forEach((el) => { el.disabled = busy; });
+  $('key-form').querySelectorAll('input, button').forEach((el) => { el.disabled = busy || keyBusy; });
   if (!busy) updateKey();
 }
 
@@ -121,8 +122,8 @@ async function transcribe() {
     const body = new FormData();
     body.append('file', audio, audio.type.includes('mp4') ? 'recording.mp4' : 'recording.webm');
     body.append('model', 'gpt-transcribe');
-    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST', headers: { Authorization: `Bearer ${apiKey}` }, body, signal: controller.signal,
+    const response = await fetch('/api/transcribe', {
+      method: 'POST', headers: { 'X-Voice2Text': '1' }, body, signal: controller.signal,
     });
     if (!response.ok) {
       const messages = { 401: 'Your API key was rejected. Update it and retry.', 403: 'This API key cannot access the transcription model.', 429: 'OpenAI quota or rate limit reached. Check your API billing or retry later.', 413: 'The recording is too large. Try a shorter recording.' };
@@ -156,30 +157,39 @@ $('settings-toggle').addEventListener('click', () => {
   $('settings').hidden = !$('settings').hidden;
   $('settings-toggle').setAttribute('aria-expanded', String(!$('settings').hidden));
 });
-$('key-form').addEventListener('submit', (event) => {
+$('key-form').addEventListener('submit', async (event) => {
   event.preventDefault();
   const value = $('api-key').value.trim();
-  if (!value) return;
-  apiKey = value;
+  if (!value || keyBusy || phase !== 'idle') return;
+  await changeKey('PUT', value);
+});
+$('remove-key').addEventListener('click', async () => {
+  if (!keyBusy && phase === 'idle') await changeKey('DELETE');
+});
+
+async function changeKey(method, key) {
+  keyBusy = true;
+  setPhase('idle');
+  $('record').disabled = true;
+  $('remove-key').disabled = true;
   try {
-    localStorage.setItem(STORAGE_KEY, apiKey);
-    $('key-status').textContent = 'Key saved in this browser.';
-  } catch {
-    $('key-status').textContent = 'Browser storage is unavailable. Your key will work for this session only.';
+    const response = await fetch('/api/key', {
+      method, headers: { 'Content-Type': 'application/json', 'X-Voice2Text': '1' },
+      ...(key ? { body: JSON.stringify({ key }) } : {}),
+    });
+    if (!response.ok) throw new Error('Could not update the key. Check the local server and try again.');
+    apiKey = (await response.json()).configured;
+    $('api-key').value = '';
+    try { localStorage.removeItem(STORAGE_KEY); } catch { /* Old browser storage may be unavailable. */ }
+    $('key-status').textContent = apiKey ? 'Key saved in .env on this computer. Git ignores this file.' : 'Key removed from .env.';
+    status(apiKey ? 'Ready when you are. Start a recording.' : 'Add your API key to get started.');
+  } catch (error) {
+    $('key-status').textContent = error.message;
+  } finally {
+    keyBusy = false;
+    setPhase('idle');
   }
-  $('api-key').value = '';
-  updateKey();
-  status('Ready when you are. Start a recording.');
-});
-$('remove-key').addEventListener('click', () => {
-  try { localStorage.removeItem(STORAGE_KEY); }
-  catch { $('key-status').textContent = 'Could not remove the saved key. Clear this site’s data in your browser settings.'; return; }
-  apiKey = '';
-  $('api-key').value = '';
-  $('key-status').textContent = 'Saved key removed.';
-  updateKey();
-  status('Add your API key to get started.');
-});
+}
 $('record').addEventListener('click', () => {
   if (phase === 'recording') stopRecording();
   else if (phase === 'idle') void startRecording();
@@ -202,10 +212,32 @@ window.addEventListener('beforeunload', (event) => {
   if (phase !== 'idle' || audio || $('transcript').value.trim()) { event.preventDefault(); event.returnValue = ''; }
 });
 window.addEventListener('pagehide', releaseMicrophone);
-try {
-  apiKey = localStorage.getItem(STORAGE_KEY) || '';
-} catch {
-  $('key-status').textContent = 'Browser storage is unavailable. Keys can only be kept for this session.';
+async function loadKeyStatus() {
+  $('record').disabled = true;
+  try {
+    const response = await fetch('/api/key');
+    if (!response.ok) throw new Error();
+    apiKey = (await response.json()).configured;
+    if (apiKey) {
+      status('Ready when you are. Start a recording.');
+      $('key-status').textContent = 'Using the key saved in .env on this computer.';
+      try { localStorage.removeItem(STORAGE_KEY); } catch { /* No browser storage required. */ }
+    } else {
+      try {
+        const previous = localStorage.getItem(STORAGE_KEY);
+        if (previous) {
+          $('api-key').value = previous;
+          $('settings').hidden = false;
+          $('settings-toggle').setAttribute('aria-expanded', 'true');
+          $('key-status').textContent = 'Your previous browser key is filled in. Click Save key to move it to this computer.';
+        }
+      } catch { /* No browser storage required. */ }
+    }
+  } catch {
+    status('Could not connect to the local server. Run npm start and reload this page.', true);
+  } finally {
+    updateKey();
+    $('record').disabled = false;
+  }
 }
-updateKey();
-if (apiKey) status('Ready when you are. Start a recording.');
+const ready = loadKeyStatus();

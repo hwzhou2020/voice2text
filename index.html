@@ -17,12 +17,12 @@
 
       <section id="settings" class="card settings" hidden aria-labelledby="settings-title">
         <h2 id="settings-title">Your OpenAI API key</h2>
-        <p>Saved only in this browser, on this device. Your key and audio are sent directly to OpenAI for transcription.</p>
+        <p>Save your key once on this computer. It will be ready every time you open the app, in any browser.</p>
         <form id="key-form">
           <label for="api-key">API key</label>
           <div class="key-row"><input id="api-key" type="password" placeholder="sk-…" autocomplete="off" spellcheck="false" required><button class="primary" type="submit">Save key</button><button id="remove-key" class="secondary" type="button">Remove</button></div>
         </form>
-        <p class="small">Local storage is not encrypted. Use this on a trusted device. <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer">Get an API key ↗</a></p>
+        <p class="small">Stored in a git-ignored .env file, readable only by your computer account. The local server uses it to transcribe with OpenAI. <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer">Get an API key ↗</a></p>
         <p id="key-status" class="small" role="status"></p>
       </section>
 
